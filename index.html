@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ollama Multi-modal Image Describer</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="main.js" defer></script>
+  </head>
+  <body>
+    <main class="app">
+      <h1>Ollama Multi-modal Image Describer</h1>
+
+      <label class="upload-label" for="image-input">Upload Image:</label>
+      <input id="image-input" type="file" accept="image/*">
+
+      <div class="preview-panel" id="preview-panel">
+        <div class="empty-preview" id="empty-preview">Select an image to preview it here.</div>
+        <img id="image-preview" alt="Selected image preview" hidden>
+        <p class="file-name" id="file-name" hidden></p>
+      </div>
+
+      <button id="describe-button" type="button">
+        <span class="button-label">Describe Image</span>
+        <span class="button-spinner" aria-hidden="true" hidden></span>
+      </button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+
+      <section class="response-section" aria-labelledby="response-heading">
+        <h2 id="response-heading">LLM Response:</h2>
+        <div class="response-box" id="response" aria-live="polite">
+          <p class="response-placeholder">Your image description will appear here.</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
