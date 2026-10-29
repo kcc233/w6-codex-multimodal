@@ -5,6 +5,9 @@ const imageInput = document.querySelector('#image-input');
 const imagePreview = document.querySelector('#image-preview');
 const emptyPreview = document.querySelector('#empty-preview');
 const fileName = document.querySelector('#file-name');
+const secondImagePreview = document.querySelector('#image-preview-2');
+const secondEmptyPreview = document.querySelector('#empty-preview-2');
+const secondFileName = document.querySelector('#file-name-2');
 const describeButton = document.querySelector('#describe-button');
 const buttonLabel = document.querySelector('.button-label');
 const buttonSpinner = document.querySelector('.button-spinner');
@@ -12,44 +15,58 @@ const statusMessage = document.querySelector('#status');
 const responseBox = document.querySelector('#response');
 
 let selectedImage = null;
-let previewUrl = null;
+let previewUrls = [];
 
 imageInput.addEventListener('change', () => {
-  const file = imageInput.files && imageInput.files[0];
+  const files = Array.from(imageInput.files || []);
   selectedImage = null;
   clearDescription();
 
-  if (previewUrl) {
-    URL.revokeObjectURL(previewUrl);
-    previewUrl = null;
-  }
+  previewUrls.forEach((url) => URL.revokeObjectURL(url));
+  previewUrls = [];
+  resetPreview(imagePreview, emptyPreview, fileName);
+  resetPreview(secondImagePreview, secondEmptyPreview, secondFileName);
 
-  if (!file) {
-    imagePreview.hidden = true;
-    emptyPreview.hidden = false;
-    fileName.hidden = true;
+  if (!files.length) {
     setStatus('Select an image to get started.', '');
     return;
   }
 
-  if (!file.type.startsWith('image/')) {
-    imagePreview.hidden = true;
-    emptyPreview.hidden = false;
-    fileName.hidden = true;
+  if (files.length > 2) {
     imageInput.value = '';
-    setStatus('That file does not appear to be an image. Choose an image file and try again.', 'error');
+    setStatus('Choose no more than two images.', 'error');
     return;
   }
 
-  selectedImage = file;
-  previewUrl = URL.createObjectURL(file);
-  imagePreview.src = previewUrl;
-  imagePreview.hidden = false;
-  emptyPreview.hidden = true;
-  fileName.textContent = file.name;
-  fileName.hidden = false;
-  setStatus('Image ready. Select “Describe image” when you’re ready.', '');
+  if (files.some((file) => !file.type.startsWith('image/'))) {
+    imageInput.value = '';
+    setStatus('One or more selected files are not images. Choose image files and try again.', 'error');
+    return;
+  }
+
+  selectedImage = files[0];
+  showPreview(files[0], imagePreview, emptyPreview, fileName);
+  if (files[1]) showPreview(files[1], secondImagePreview, secondEmptyPreview, secondFileName);
+  setStatus(`${files.length} image${files.length === 1 ? '' : 's'} ready.`, '');
 });
+
+function showPreview(file, image, emptyMessage, nameLabel) {
+  const url = URL.createObjectURL(file);
+  previewUrls.push(url);
+  image.src = url;
+  image.hidden = false;
+  emptyMessage.hidden = true;
+  nameLabel.textContent = file.name;
+  nameLabel.hidden = false;
+}
+
+function resetPreview(image, emptyMessage, nameLabel) {
+  image.removeAttribute('src');
+  image.hidden = true;
+  emptyMessage.hidden = false;
+  nameLabel.textContent = '';
+  nameLabel.hidden = true;
+}
 
 describeButton.addEventListener('click', describeImage);
 
