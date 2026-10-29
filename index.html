@@ -11,25 +11,48 @@
     <main class="app">
       <h1>Ollama Multi-modal Image Describer</h1>
 
-      <label class="upload-label" for="image-input">Upload Image:</label>
-      <input id="image-input" type="file" accept="image/*">
+      <label class="upload-label" for="image-input">Upload one or two images:</label>
+      <input id="image-input" type="file" accept="image/*" multiple>
+      <p class="upload-help">Select up to two images in the same file picker. They will appear side by side below.</p>
 
-      <div class="preview-panel" id="preview-panel">
-        <div class="empty-preview" id="empty-preview">Select an image to preview it here.</div>
-        <img id="image-preview" alt="Selected image preview" hidden>
-        <p class="file-name" id="file-name" hidden></p>
+      <div class="preview-grid">
+        <section class="image-card" aria-labelledby="image-one-title">
+          <h2 id="image-one-title">Image 1</h2>
+          <div class="preview-panel" id="preview-panel">
+            <div class="empty-preview" id="empty-preview">No image selected</div>
+            <img id="image-preview" alt="Selected image 1 preview" hidden>
+            <p class="file-name" id="file-name" hidden></p>
+          </div>
+        </section>
+        <section class="image-card" aria-labelledby="image-two-title">
+          <h2 id="image-two-title">Image 2</h2>
+          <div class="preview-panel second-preview">
+            <span class="empty-preview">No image selected</span>
+          </div>
+        </section>
       </div>
 
       <button id="describe-button" type="button">
-        <span class="button-label">Describe Image</span>
+        <span class="button-label">Describe Selected Images</span>
         <span class="button-spinner" aria-hidden="true" hidden></span>
       </button>
       <p class="status" id="status" role="status" aria-live="polite"></p>
 
       <section class="response-section" aria-labelledby="response-heading">
-        <h2 id="response-heading">LLM Response:</h2>
-        <div class="response-box" id="response" aria-live="polite">
-          <p class="response-placeholder">Your image description will appear here.</p>
+        <h2 id="response-heading">LLM Responses:</h2>
+        <div class="response-grid">
+          <div class="response-column">
+            <h3>Image 1 Description</h3>
+            <div class="response-box" id="response" aria-live="polite">
+              <p class="response-placeholder">Waiting for image 1...</p>
+            </div>
+          </div>
+          <div class="response-column">
+            <h3>Image 2 Description</h3>
+            <div class="response-box" aria-live="polite">
+              <p class="response-placeholder">Waiting for image 2...</p>
+            </div>
+          </div>
         </div>
       </section>
     </main>
