@@ -13,13 +13,14 @@ const buttonLabel = document.querySelector('.button-label');
 const buttonSpinner = document.querySelector('.button-spinner');
 const statusMessage = document.querySelector('#status');
 const responseBox = document.querySelector('#response');
+const secondResponseBox = document.querySelectorAll('.response-box')[1];
 
-let selectedImage = null;
+let selectedImages = [];
 let previewUrls = [];
 
 imageInput.addEventListener('change', () => {
   const files = Array.from(imageInput.files || []);
-  selectedImage = null;
+  selectedImages = [];
   clearDescription();
 
   previewUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -44,7 +45,7 @@ imageInput.addEventListener('change', () => {
     return;
   }
 
-  selectedImage = files[0];
+  selectedImages = files;
   showPreview(files[0], imagePreview, emptyPreview, fileName);
   if (files[1]) showPreview(files[1], secondImagePreview, secondEmptyPreview, secondFileName);
   setStatus(`${files.length} image${files.length === 1 ? '' : 's'} ready.`, '');
@@ -71,7 +72,7 @@ function resetPreview(image, emptyMessage, nameLabel) {
 describeButton.addEventListener('click', describeImage);
 
 async function describeImage() {
-  if (!selectedImage) {
+  if (!selectedImages.length) {
     setStatus('Please choose an image before asking for a description.', 'error');
     imageInput.focus();
     return;
@@ -79,45 +80,57 @@ async function describeImage() {
 
   setLoading(true);
   clearDescription();
-  setStatus('Ollama is analyzing your image. This may take a little while.', 'loading');
+  setLoading(true);
+  clearDescription();
+  setStatus(`Ollama is analyzing ${selectedImages.length === 2 ? 'both images' : 'your image'}. This may take a little while.`, 'loading');
 
-  try {
-    const imageBase64 = await fileToBase64(selectedImage);
-    const response = await fetch(OLLAMA_CHAT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL_NAME,
-        stream: false,
-        messages: [{
-          role: 'user',
-          content: 'Describe what you see in this image. Be clear and concise, and mention the main subjects and setting.',
-          images: [imageBase64]
-        }]
-      })
-    });
-
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(result.error || `Ollama returned HTTP ${response.status}.`);
+  const boxes = [responseBox, secondResponseBox];
+  const results = await Promise.all(selectedImages.map(async (image, index) => {
+    try {
+      const description = await requestDescription(image);
+      setResponse(boxes[index], description, 'description-text');
+      return null;
+    } catch (error) {
+      console.error(`Image ${index + 1} description request failed:`, error);
+      setResponse(boxes[index], formatRequestError(error), 'response-placeholder');
+      return error;
     }
+  }));
 
-    const description = result.message && result.message.content;
-    if (typeof description !== 'string' || !description.trim()) {
-      throw new Error('Ollama responded, but the response did not include a description.');
-    }
+  const failures = results.filter(Boolean).length;
+  if (failures === 0) setStatus('Image descriptions generated successfully.', 'success');
+  else if (failures === results.length) setStatus('Could not generate the image descriptions. Check the response boxes for details.', 'error');
+  else setStatus('One image was described, but the other request failed. Check both response boxes.', 'error');
+  setLoading(false);
+}
 
-    const paragraph = document.createElement('p');
-    paragraph.className = 'description-text';
-    paragraph.textContent = description.trim();
-    responseBox.replaceChildren(paragraph);
-    setStatus('Image described successfully.', 'success');
-  } catch (error) {
-    console.error('Image description request failed:', error);
-    showRequestError(error);
-  } finally {
-    setLoading(false);
+async function requestDescription(image) {
+  const imageBase64 = await fileToBase64(image);
+  const response = await fetch(OLLAMA_CHAT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: MODEL_NAME,
+      stream: false,
+      messages: [{
+        role: 'user',
+        content: 'Describe what you see in this image. Be clear and concise, and mention the main subjects and setting.',
+        images: [imageBase64]
+      }]
+    })
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `Ollama returned HTTP ${response.status}.`);
+  const description = result.message && result.message.content;
+  if (typeof description !== 'string' || !description.trim()) {
+    throw new Error('Ollama responded, but the response did not include a description.');
   }
+  return description.trim();
+}
+
+function setResponse(box, message, className) {
+  box.replaceChildren(Object.assign(document.createElement('p'), { className, textContent: message }));
 }
 
 function fileToBase64(file) {
@@ -136,7 +149,7 @@ function fileToBase64(file) {
   });
 }
 
-function showRequestError(error) {
+function formatRequestError(error) {
   const detail = String(error && error.message ? error.message : error);
   let message = `Could not describe the image. ${detail}`;
 
@@ -146,18 +159,12 @@ function showRequestError(error) {
     message = `The model “${MODEL_NAME}” may not be installed. In Terminal, run: ollama pull ${MODEL_NAME}`;
   }
 
-  responseBox.replaceChildren(Object.assign(document.createElement('p'), {
-    className: 'response-placeholder',
-    textContent: message
-  }));
-  setStatus('Something went wrong. Check the message below and try again.', 'error');
+  return message;
 }
 
 function clearDescription() {
-  responseBox.replaceChildren(Object.assign(document.createElement('p'), {
-    className: 'response-placeholder',
-    textContent: 'Your image description will show up here after analysis.'
-  }));
+  setResponse(responseBox, 'Waiting for image 1...', 'response-placeholder');
+  setResponse(secondResponseBox, 'Waiting for image 2...', 'response-placeholder');
 }
 
 function setStatus(message, state) {
@@ -169,6 +176,6 @@ function setStatus(message, state) {
 function setLoading(isLoading) {
   describeButton.disabled = isLoading;
   imageInput.disabled = isLoading;
-  buttonLabel.textContent = isLoading ? 'Analyzing image…' : 'Describe image';
+  buttonLabel.textContent = isLoading ? 'Analyzing images…' : 'Describe Selected Images';
   buttonSpinner.hidden = !isLoading;
 }
